@@ -69,9 +69,12 @@ const [orderStatusFilter, setOrderStatusFilter] = useState("All");
     };
   }, []);
 
-  useEffect(() => {
-    if (session && isAdmin) loadProducts();
-  }, [session, isAdmin]);
+useEffect(() => {
+  if (session && isAdmin) {
+    loadProducts();
+    loadOrders();
+  }
+}, [session, isAdmin]);
 
   async function loadProducts() {
     const { data, error } = await supabase
@@ -85,6 +88,48 @@ const [orderStatusFilter, setOrderStatusFilter] = useState("All");
     }
 
     setProducts(data || []);
+  }
+
+  async function loadOrders() {
+    setOrdersLoading(true);
+
+    const { data, error } = await supabase
+      .from("orders")
+      .select("id, customer_name, phone, address, total, status, created_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setMessage("Orders load failed: " + error.message);
+    } else {
+      setOrders(data || []);
+    }
+
+    setOrdersLoading(false);
+  }
+
+  async function updateOrderStatus(orderId, newStatus) {
+    const allowedStatuses = [
+      "Pending",
+      "Processing",
+      "Shipped",
+      "Delivered",
+      "Cancelled",
+    ];
+
+    if (!allowedStatuses.includes(newStatus)) return;
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", orderId);
+
+    if (error) {
+      setMessage("Order status update failed: " + error.message);
+      return;
+    }
+
+    setMessage("Order status updated successfully.");
+    await loadOrders();
   }
 
   async function handleLogin(e) {
@@ -555,7 +600,169 @@ const [orderStatusFilter, setOrderStatusFilter] = useState("All");
                   </table>
                 </div>
               )}
-            </section>
+            </section> ```jsx
+<section
+  style={{
+    background: "white",
+    padding: 20,
+    borderRadius: 12,
+    marginTop: 24,
+    overflowX: "auto",
+  }}
+>
+  <h2>Order Management</h2>
+
+  <div
+    style={{
+      display: "flex",
+      gap: 10,
+      flexWrap: "wrap",
+      marginBottom: 16,
+    }}
+  >
+    <input
+      type="text"
+      placeholder="Search customer, phone or order ID"
+      value={orderSearch}
+      onChange={(e) => setOrderSearch(e.target.value)}
+      style={{ padding: 10, minWidth: 220, flex: 1 }}
+    />
+
+    <select
+      value={orderStatusFilter}
+      onChange={(e) => setOrderStatusFilter(e.target.value)}
+      style={{ padding: 10 }}
+    >
+      <option value="All">All statuses</option>
+      <option value="Pending">Pending</option>
+      <option value="Processing">Processing</option>
+      <option value="Shipped">Shipped</option>
+      <option value="Delivered">Delivered</option>
+      <option value="Cancelled">Cancelled</option>
+    </select>
+
+    <button
+      type="button"
+      style={buttonStyle}
+      disabled={ordersLoading}
+      onClick={loadOrders}
+    >
+      {ordersLoading ? "Loading..." : "Refresh Orders"}
+    </button>
+  </div>
+
+  {ordersLoading ? (
+    <p>Loading orders...</p>
+  ) : (
+    <table
+      style={{
+        width: "100%",
+        borderCollapse: "collapse",
+        minWidth: 750,
+      }}
+    >
+      <thead>
+        <tr>
+          <th style={{ padding: 10, textAlign: "left" }}>Order ID</th>
+          <th style={{ padding: 10, textAlign: "left" }}>Customer</th>
+          <th style={{ padding: 10, textAlign: "left" }}>Phone</th>
+          <th style={{ padding: 10, textAlign: "left" }}>Address</th>
+          <th style={{ padding: 10, textAlign: "left" }}>Total</th>
+          <th style={{ padding: 10, textAlign: "left" }}>Date</th>
+          <th style={{ padding: 10, textAlign: "left" }}>Status</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {orders
+          .filter((order) => {
+            const query = orderSearch.trim().toLowerCase();
+
+            const matchesSearch =
+              !query ||
+              String(order.id ?? "").toLowerCase().includes(query) ||
+              String(order.customer_name ?? "").toLowerCase().includes(query) ||
+              String(order.phone ?? "").toLowerCase().includes(query);
+
+            const matchesStatus =
+              orderStatusFilter === "All" ||
+              order.status === orderStatusFilter;
+
+            return matchesSearch && matchesStatus;
+          })
+          .map((order) => (
+            <tr key={order.id}>
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                {String(order.id).slice(0, 8)}
+              </td>
+
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                {order.customer_name}
+              </td>
+
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                {order.phone}
+              </td>
+
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                {order.address}
+              </td>
+
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                ৳{Number(order.total).toLocaleString("en-BD")}
+              </td>
+
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                {order.created_at
+                  ? new Date(order.created_at).toLocaleDateString("en-BD")
+                  : "—"}
+              </td>
+
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                <select
+                  value={order.status || "Pending"}
+                  disabled={ordersLoading}
+                  onChange={(e) =>
+                    updateOrderStatus(order.id, e.target.value)
+                  }
+                  style={{ padding: 8, minWidth: 125 }}
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Shipped">Shipped</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Cancelled">Cancelled</option>
+                </select>
+              </td>
+            </tr>
+          ))}
+
+        {orders.filter((order) => {
+          const query = orderSearch.trim().toLowerCase();
+
+          const matchesSearch =
+            !query ||
+            String(order.id ?? "").toLowerCase().includes(query) ||
+            String(order.customer_name ?? "").toLowerCase().includes(query) ||
+            String(order.phone ?? "").toLowerCase().includes(query);
+
+          const matchesStatus =
+            orderStatusFilter === "All" ||
+            order.status === orderStatusFilter;
+
+          return matchesSearch && matchesStatus;
+        }).length === 0 && (
+          <tr>
+            <td colSpan={7} style={{ padding: 16, textAlign: "center" }}>
+              No orders found.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
+  )}
+</section>
+```
           </>
         )}
 
