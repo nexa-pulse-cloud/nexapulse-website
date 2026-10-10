@@ -18,6 +18,12 @@ export default function AdminPanel() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [products, setProducts] = useState([]);
+  
+const [orders, setOrders] = useState([]);
+const [ordersLoading, setOrdersLoading] = useState(false);
+const [orderSearch, setOrderSearch] = useState("");
+const [orderStatusFilter, setOrderStatusFilter] = useState("All");
+
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
