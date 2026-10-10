@@ -108,7 +108,8 @@ function CartDrawer({ open, onClose, cart, setCart }) {
     (sum, item) => sum + item.price * item.qty,
     0
   );
-
+const deliveryCharge = cart.length > 0 ? 120 : 0;
+const grandTotal = total + deliveryCharge;
   const update = (id, delta) => {
     setCart((old) =>
       old.map((item) =>
@@ -293,10 +294,20 @@ const submitOrder = async (e) => {
               </select>
             </label>
 
-            <div className="checkout-total">
-              <span>Estimated total</span>
-              <strong>{money(total)}</strong>
-            </div>
+<div className="checkout-total">
+  <span>Product subtotal</span>
+  <strong>{money(total)}</strong>
+</div>
+
+<div className="checkout-total">
+  <span>Delivery charge</span>
+  <strong>{money(deliveryCharge)}</strong>
+</div>
+
+<div className="checkout-total">
+  <span>Total payable</span>
+  <strong>{money(grandTotal)}</strong>
+</div>
 
             <button
               className="primary-button full-button"
@@ -381,8 +392,8 @@ const submitOrder = async (e) => {
                 <div className="shipping-note">
                   <Truck size={17} />
                   <span>
-                    Delivery fee will be confirmed separately.
-                  </span>
+  Nationwide delivery charge: {money(deliveryCharge)}
+</span>
                 </div>
 
                 <div className="subtotal">
