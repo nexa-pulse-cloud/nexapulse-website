@@ -90,22 +90,24 @@ useEffect(() => {
     setProducts(data || []);
   }
 
-  async function loadOrders() {
-    setOrdersLoading(true);
 
-    const { data, error } = await supabase
-      .from("orders")
-      .select("id, customer_name, phone, address, subtotal, delivery_charge, total, status, created_at")
-      .order("created_at", { ascending: false });
+async function loadOrders() {
+  setOrdersLoading(true);
 
-    if (error) {
-      setMessage("Orders load failed: " + error.message);
-    } else {
-      setOrders(data || []);
-    }
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false });
 
-    setOrdersLoading(false);
+  if (error) {
+    setMessage("Orders load failed: " + error.message);
+    console.error("Orders load failed:", error);
+  } else {
+    setOrders(data || []);
   }
+
+  setOrdersLoading(false);
+}
 
   async function updateOrderStatus(orderId, newStatus) {
     const allowedStatuses = [
