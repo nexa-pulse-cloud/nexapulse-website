@@ -95,7 +95,7 @@ useEffect(() => {
 
     const { data, error } = await supabase
       .from("orders")
-      .select("id, customer_name, phone, address, total, status, created_at")
+      .select("id, customer_name, phone, address, subtotal, delivery_charge, total, status, created_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -708,9 +708,14 @@ useEffect(() => {
                 {order.address}
               </td>
 
-              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
-                ৳{Number(order.total).toLocaleString("en-BD")}
-              </td>
+             
+<td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+  <div>পণ্য: ৳{Number(order.subtotal ?? 0).toLocaleString("en-BD")}</div>
+  <div>ডেলিভারি: ৳{Number(order.delivery_charge ?? 120).toLocaleString("en-BD")}</div>
+  <strong>
+    সর্বমোট: ৳{Number(order.total).toLocaleString("en-BD")}
+  </strong>
+</td>
 
               <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
                 {order.created_at
