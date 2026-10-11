@@ -9,6 +9,8 @@ const emptyForm = {
   price: "",
   stock: "0",
   image_url: "",
+  image_urls_text: "",
+  old_price: "",
 };
 
 export default function AdminPanel() {
@@ -190,8 +192,13 @@ async function loadOrders() {
         category: form.category,
         description: form.description.trim(),
         price: Number(form.price),
+        old_price: form.old_price === "" ? null : Number(form.old_price),
         stock: Number(form.stock),
         image_url: imageUrl,
+        image_urls: [...new Set([
+          ...(imageUrl ? [imageUrl] : []),
+          ...form.image_urls_text.split("\n").map((url) => url.trim()).filter(Boolean),
+        ])],
       };
 
       const result = editingId
@@ -224,6 +231,10 @@ async function loadOrders() {
       price: String(product.price ?? ""),
       stock: String(product.stock ?? 0),
       image_url: product.image_url || "",
+      image_urls_text: Array.isArray(product.image_urls)
+        ? product.image_urls.filter((url) => url && url !== product.image_url).join("\n")
+        : "",
+      old_price: product.old_price == null ? "" : String(product.old_price),
     });
     setImageFile(null);
     setMessage("");
@@ -436,6 +447,18 @@ async function loadOrders() {
                 </label>
 
                 <label style={labelStyle}>
+                  Old Price (৳) — optional
+                  <input
+                    style={inputStyle}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={form.old_price}
+                    onChange={(e) => setForm({ ...form, old_price: e.target.value })}
+                    placeholder="Regular price before discount"
+                  />
+                </label>
+                <label style={labelStyle}>
                   Stock
                   <input
                     style={inputStyle}
@@ -483,6 +506,20 @@ async function loadOrders() {
                   }
                   placeholder="https://..."
                 />
+              </label>
+
+              <label style={labelStyle}>
+                Additional Product Image URLs (one URL per line)
+                <textarea
+                  style={inputStyle}
+                  rows={3}
+                  value={form.image_urls_text}
+                  onChange={(e) => setForm({ ...form, image_urls_text: e.target.value })}
+                  placeholder={"https://image-2.jpg\nhttps://image-3.jpg"}
+                />
+                <small style={{ color: "#64748b", fontWeight: 400 }}>
+                  প্রথম ছবি Product Image/URL থেকে, অতিরিক্ত ছবিগুলো এখানে দাও।
+                </small>
               </label>
 
               <button style={buttonStyle} disabled={loading}>
@@ -571,7 +608,15 @@ async function loadOrders() {
                             <small>{product.category}</small>
                           </td>
                           <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
-                            ৳{Number(product.price).toLocaleString("en-BD")}
+                            <strong>৳{Number(product.price).toLocaleString("en-BD")}</strong>
+                            {Number(product.old_price) > Number(product.price) && (
+                              <div>
+                                <del style={{ color: "#64748b" }}>৳{Number(product.old_price).toLocaleString("en-BD")}</del>
+                                <span style={{ color: "#dc2626", marginLeft: 6, fontWeight: 700 }}>
+                                  {Math.round((1 - Number(product.price) / Number(product.old_price)) * 100)}% OFF
+                                </span>
+                              </div>
+                            )}
                           </td>
                           <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
                             {product.stock}
@@ -672,6 +717,7 @@ async function loadOrders() {
           <th style={{ padding: 10, textAlign: "left" }}>Total</th>
           <th style={{ padding: 10, textAlign: "left" }}>Date</th>
           <th style={{ padding: 10, textAlign: "left" }}>Status</th>
+          <th style={{ padding: 10, textAlign: "left" }}>WhatsApp</th>
         </tr>
       </thead>
 
@@ -741,6 +787,18 @@ async function loadOrders() {
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </td>
+              <td style={{ padding: 10, borderTop: "1px solid #e2e8f0" }}>
+                {(order.customer_phone || order.phone) ? (
+                  <a
+                    href={`https://wa.me/${String(order.customer_phone || order.phone).replace(/\D/g, "").replace(/^0/, "880")}?text=${encodeURIComponent(`Hello ${order.customer_name || "customer"}, this is Nexapulse regarding your order ${order.order_number || order.id}. Total: ৳${Number(order.total || 0).toLocaleString("en-BD")}.`)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ ...buttonStyle, display: "inline-flex", textDecoration: "none", background: "#16a34a" }}
+                  >
+                    WhatsApp
+                  </a>
+                ) : "No phone"}
+              </td>
             </tr>
           ))}
 
@@ -760,7 +818,7 @@ async function loadOrders() {
           return matchesSearch && matchesStatus;
         }).length === 0 && (
           <tr>
-            <td colSpan={7} style={{ padding: 16, textAlign: "center" }}>
+            <td colSpan={8} style={{ padding: 16, textAlign: "center" }}>
               No orders found.
             </td>
           </tr>
