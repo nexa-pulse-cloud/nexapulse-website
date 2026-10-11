@@ -69,33 +69,35 @@ function Header({ cartCount, onCart, activeCategory, setActiveCategory }) {
 }
 
 function ProductCard({ product, addToCart, wishlisted, toggleWishlist }) {
+  const gallery = Array.isArray(product.image_urls) && product.image_urls.length
+    ? product.image_urls
+    : product.image_url ? [product.image_url] : [];
+  const oldPrice = Number(product.oldPrice ?? product.old_price ?? 0);
+  const hasDiscount = oldPrice > Number(product.price);
+  const discountPercent = hasDiscount ? Math.round((1 - Number(product.price) / oldPrice) * 100) : 0;
+  const whatsappText = `Hello Nexapulse! I want to order: ${product.name}. Price: ${money(Number(product.price))}. Please confirm availability and delivery. ${window.location.origin}`;
   return <article className="product-card">
     <div className="product-image-wrap">
-     {product.image_url ? (
-  <img
-    src={product.image_url}
-    alt={product.name}
-    style={{
-      width: "100%",
-      height: "100%",
-      objectFit: "contain",
-    }}
-  />
-) : (
-  <ProductArt
-    type={product.image}
-    color={product.color}
-  />
-)}
-      <span className="product-tag">{product.tag}</span>
+      {gallery.length ? (
+        <div className="product-gallery" aria-label={`${product.name} product images`}>
+          {gallery.map((src, index) => <img key={src + index} src={src} alt={`${product.name} view ${index + 1}`} loading="lazy" />)}
+        </div>
+      ) : <ProductArt type={product.image} color={product.color} />}
+      <span className="product-tag">{product.tag || "AVAILABLE"}</span>
       <button className={`wishlist ${wishlisted ? "is-loved" : ""}`} onClick={() => toggleWishlist(product.id)} aria-label={wishlisted ? "Remove from wishlist" : "Add to wishlist"}><Heart size={17} fill={wishlisted ? "currentColor" : "none"}/></button>
-      {product.oldPrice && <span className="discount">{Math.round((1-product.price/product.oldPrice)*100)}% OFF</span>}
+      {hasDiscount && <span className="discount">{discountPercent}% OFF</span>}
     </div>
     <div className="product-info">
       <div className="product-category">{product.category}</div>
       <h3>{product.name}</h3>
       <p className="product-description">{product.description}</p>
-      <div className="product-bottom"><div className="price-line"><strong>{money(product.price)}</strong>{product.oldPrice && <del>{money(product.oldPrice)}</del>}</div><button className="add-button" onClick={() => addToCart(product)} aria-label={`Add ${product.name} to cart`}><Plus size={18}/></button></div>
+      <div className="product-bottom">
+        <div className="price-line"><strong>{money(Number(product.price))}</strong>{hasDiscount && <del>{money(oldPrice)}</del>}</div>
+        <button className="add-button" onClick={() => addToCart(product)} aria-label={`Add ${product.name} to cart`}><Plus size={18}/></button>
+      </div>
+      <div className="product-card-actions">
+        <a className="whatsapp-order-button" href={`https://wa.me/8801727874997?text=${encodeURIComponent(whatsappText)}`} target="_blank" rel="noreferrer"><MessageCircle size={15}/> Order on WhatsApp</a>
+      </div>
     </div>
   </article>;
 }
@@ -110,6 +112,14 @@ function CartDrawer({ open, onClose, cart, setCart }) {
   );
 const deliveryCharge = cart.length > 0 ? 120 : 0;
 const grandTotal = total + deliveryCharge;
+const whatsappOrderText = [
+  "Hello Nexapulse! I want to place an order:",
+  ...cart.map((item) => `- ${item.name} x ${item.qty}: ${money(Number(item.price) * item.qty)}`),
+  `Subtotal: ${money(total)}`,
+  `Delivery: ${money(deliveryCharge)}`,
+  `Total: ${money(grandTotal)}`,
+  "Please confirm availability and delivery details."
+].join("\n");
   const update = (id, delta) => {
     setCart((old) =>
       old.map((item) =>
@@ -405,6 +415,14 @@ const submitOrder = async (e) => {
                   Cash on Delivery is available. Submit your order to request delivery.
                 </p>
 
+                <a
+                  className="whatsapp-order-button full-button"
+                  href={`https://wa.me/8801727874997?text=${encodeURIComponent(whatsappOrderText)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <MessageCircle size={16} /> Order on WhatsApp
+                </a>
                 <button
                   type="button"
                   className="primary-button full-button"
@@ -445,7 +463,7 @@ function App() {
           setProducts(
             data.map((p) => ({
               ...p,
-              oldPrice: null,
+              oldPrice: p.old_price ?? null,
               tag: "AVAILABLE",
               color: "cyan",
               image:
