@@ -441,11 +441,22 @@ const submitOrder = async (e) => {
 function App() {
   
   const [products, setProducts] = useState(demoProducts);
+  const [globalDiscountPercent, setGlobalDiscountPercent] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadProducts() {
+      const { data: discountSetting } = await supabase
+        .from("store_settings")
+        .select("global_discount_enabled, global_discount_percent")
+        .eq("id", 1)
+        .maybeSingle();
+      const globalPercent = discountSetting?.global_discount_enabled
+        ? Math.min(90, Math.max(0, Number(discountSetting.global_discount_percent) || 0))
+        : 0;
+      if (!cancelled) setGlobalDiscountPercent(globalPercent);
+
       const { data, error } = await supabase
         .from("products")
         .select("*")
@@ -463,7 +474,10 @@ function App() {
           setProducts(
             data.map((p) => ({
               ...p,
-              oldPrice: p.old_price ?? null,
+              price: Number(p.old_price) > Number(p.price) || !globalPercent
+                ? Number(p.price)
+                : Math.round(Number(p.price) * (1 - globalPercent / 100)),
+              oldPrice: Number(p.old_price) > Number(p.price) ? Number(p.old_price) : (globalPercent ? Number(p.price) : null),
               tag: "AVAILABLE",
               color: "cyan",
               image:
