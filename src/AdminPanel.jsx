@@ -27,6 +27,8 @@ const [orderSearch, setOrderSearch] = useState("");
 const [orderStatusFilter, setOrderStatusFilter] = useState("All");
 
   const [form, setForm] = useState(emptyForm);
+  const [globalDiscountEnabled, setGlobalDiscountEnabled] = useState(false);
+  const [globalDiscountPercent, setGlobalDiscountPercent] = useState("10");
   const [editingId, setEditingId] = useState(null);
   const [imageFile, setImageFile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -75,8 +77,48 @@ useEffect(() => {
   if (session && isAdmin) {
     loadProducts();
     loadOrders();
+    loadGlobalDiscount();
   }
 }, [session, isAdmin]);
+
+  async function loadGlobalDiscount() {
+    const { data, error } = await supabase
+      .from("store_settings")
+      .select("global_discount_enabled, global_discount_percent")
+      .eq("id", 1)
+      .maybeSingle();
+    if (error) {
+      setMessage("Global discount load হয়নি: " + error.message);
+      return;
+    }
+    if (data) {
+      setGlobalDiscountEnabled(Boolean(data.global_discount_enabled));
+      setGlobalDiscountPercent(String(data.global_discount_percent ?? 10));
+    }
+  }
+
+  async function saveGlobalDiscount(e) {
+    e.preventDefault();
+    const percent = Number(globalDiscountPercent);
+    if (!Number.isFinite(percent) || percent < 1 || percent > 90) {
+      setMessage("Global discount 1 থেকে 90 শতাংশের মধ্যে দাও।");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    const { error } = await supabase.from("store_settings").upsert({
+      id: 1,
+      global_discount_enabled: globalDiscountEnabled,
+      global_discount_percent: percent,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) setMessage("Global discount save হয়নি: " + error.message);
+    else {
+      setMessage(globalDiscountEnabled ? "Global discount চালু হয়েছে!" : "Global discount বন্ধ হয়েছে!");
+      await loadProducts();
+    }
+    setLoading(false);
+  }
 
   async function loadProducts() {
     const { data, error } = await supabase
@@ -543,6 +585,21 @@ async function loadOrders() {
                   Cancel
                 </button>
               )}
+            </form>
+
+            <form onSubmit={saveGlobalDiscount} style={{ background: "white", padding: 24, borderRadius: 14, marginBottom: 28 }}>
+              <h2>Global Discount</h2>
+              <p style={{ color: "#64748b" }}>যেসব পণ্যে আলাদা Individual Discount নেই, সেগুলোতে এই ছাড় প্রযোজ্য হবে।</p>
+              <label style={{ ...labelStyle, display: "flex", alignItems: "center", gap: 10 }}>
+                <input type="checkbox" checked={globalDiscountEnabled} onChange={(e) => setGlobalDiscountEnabled(e.target.checked)} />
+                সব eligible পণ্যে Global Discount চালু
+              </label>
+              <label style={labelStyle}>
+                Discount Percentage (%)
+                <input style={inputStyle} type="number" min="1" max="90" step="1" value={globalDiscountPercent} onChange={(e) => setGlobalDiscountPercent(e.target.value)} required />
+              </label>
+              <button style={buttonStyle} disabled={loading}>{loading ? "Saving..." : "Save Global Discount"}</button>
+              <p style={{ color: "#64748b", fontSize: 13, marginTop: 10 }}>Individual Discount থাকলে সেটিই প্রাধান্য পাবে; একই পণ্যে দুইবার ছাড় হবে না।</p>
             </form>
 
             <section
